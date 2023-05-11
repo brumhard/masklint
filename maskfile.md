@@ -31,6 +31,7 @@ fi
 
 ```bash
 if  [ "$command" = "dump" ]; then
+    rm -rf "test-out"
     command="dump -o test-out"
 fi
 cargo run -- $command --maskfile test/maskfile.md
