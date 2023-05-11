@@ -47,6 +47,7 @@
             cargo-outdated
 
             mask
+            shellcheck
           ];
         };
       }
