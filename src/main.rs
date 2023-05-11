@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         };
 
         let linter: Box<dyn Linter> = match script.executor.as_str() {
-            "sh" | "bash" => Box::new(Shellcheck {}),
+            "sh" | "bash" | "zsh" => Box::new(Shellcheck {}),
             _ => continue,
         };
 
