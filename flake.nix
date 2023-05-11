@@ -42,12 +42,19 @@
 
         devShell = mkShellNoCC {
           packages = [
+            ## rust
             rustup
             cargo-audit
             cargo-outdated
 
             mask
+
+            ## shells
             shellcheck
+
+            ## python
+            python311
+            python311Packages.pylint
           ];
         };
       }

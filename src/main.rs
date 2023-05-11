@@ -55,7 +55,11 @@ fn main() -> Result<()> {
 
         let linter: Box<dyn Linter> = match script.executor.as_str() {
             "sh" | "bash" | "zsh" => Box::new(Shellcheck {}),
-            _ => continue,
+            "py" | "python" => Box::new(Pylint {}),
+            _ => {
+                println!("no linter found");
+                continue;
+            }
         };
 
         let mut file_name = command.name.clone();
@@ -100,5 +104,34 @@ impl Linter for Shellcheck {
         let mut res = format!("# shellcheck shell={}\n", script.executor);
         res.push_str(&script.source);
         Ok(res)
+    }
+}
+
+const PYLINT_IGNORES: &'static [&str] = &[
+    "C0114", //https://pylint.readthedocs.io/en/latest/user_guide/messages/convention/missing-module-docstring.html
+];
+struct Pylint;
+impl Linter for Pylint {
+    fn file_extension(&self) -> &'static str {
+        ".py"
+    }
+    fn execute(&self, path: &Path) -> Result<String> {
+        let output = Command::new("pylint").arg(path).output()?;
+        let mut valid_lines: Vec<String> = vec![];
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            if line.starts_with("-------") {
+                break;
+            }
+            if line.starts_with("******") {
+                continue;
+            }
+            // if the line contains any of the ignores skip
+            if PYLINT_IGNORES.iter().find(|&ignore| line.contains(ignore)).is_some() {
+                continue;
+            }
+
+            valid_lines.push(line.replace(&format!("{}:", path.to_string_lossy()), "line "))
+        }
+        Ok(valid_lines.join("\n"))
     }
 }

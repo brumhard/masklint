@@ -26,3 +26,12 @@ if [ $(echo "$vulns" |  jq '.vulnerabilities.count') -gt 0 ]; then
     exit 1
 fi
 ```
+
+## testcmd (command)
+
+```bash
+if  [ "$command" = "dump" ]; then
+    command="dump -o test-out"
+fi
+cargo run -- $command --maskfile test/maskfile.md
+```
