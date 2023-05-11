@@ -1,8 +1,10 @@
 use anyhow::Result;
+use mask_parser::maskfile::Script;
 use std::{
+    fmt::format,
     fs::{self, File},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
 };
 
@@ -20,21 +22,49 @@ fn main() -> Result<()> {
             Some(s) => s,
         };
 
-        let linter = match script.executor.as_str() {
-            "sh" | "bash" => "shellcheck",
+        let linter: Box<dyn Linter> = match script.executor.as_str() {
+            "sh" | "bash" => Box::new(Shellcheck {}),
             _ => continue,
         };
 
-        let file_path = tmp_dir.join(&command.name);
+        let mut file_name = command.name.clone();
+        file_name.push_str(linter.file_extension());
+        let file_path = tmp_dir.join(&file_name);
         let mut script_file = File::options().create_new(true).append(true).open(&file_path)?;
-        script_file.write(format!("# shellcheck shell={}\n", script.executor).as_bytes())?;
-        script_file.write(script.source.as_bytes())?;
+        let content = linter.content(&script)?;
+        script_file.write(content.as_bytes())?;
 
-        let path = file_path.to_string_lossy().to_string();
         println!("checking {}", &command.name);
-        let output = Command::new(linter).arg("--color=always").arg(&path).output()?;
-        let findings = String::from_utf8_lossy(&output.stdout).replace(&format!("{} ", path), "");
+        let findings = linter.execute(&file_path)?;
         println!("{}", findings);
     }
     Ok(())
+}
+
+trait Linter {
+    fn file_extension(&self) -> &'static str {
+        ""
+    }
+    fn content(&self, script: &Script) -> Result<String> {
+        Ok(script.source.clone())
+    }
+    fn execute(&self, path: &Path) -> Result<String>;
+}
+
+struct Shellcheck;
+impl Linter for Shellcheck {
+    fn file_extension(&self) -> &'static str {
+        ".sh"
+    }
+    fn execute(&self, path: &Path) -> Result<String> {
+        let output = Command::new("shellcheck").arg("--color=always").arg(path).output()?;
+        let findings = String::from_utf8_lossy(&output.stdout)
+            .replace(&format!("{} ", path.to_string_lossy()), "");
+        Ok(findings)
+    }
+    fn content(&self, script: &Script) -> Result<String> {
+        let mut res = format!("# shellcheck shell={}\n", script.executor);
+        res.push_str(&script.source);
+        Ok(res)
+    }
 }
