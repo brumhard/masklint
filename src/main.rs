@@ -105,7 +105,7 @@ impl Linter for Shellcheck {
         Ok(findings)
     }
     fn content(&self, script: &Script) -> Result<String> {
-        let mut res = format!("# shellcheck shell={}\n", script.executor);
+        let mut res = format!("#!/bin/usr/env {}\n", script.executor);
         res.push_str(&script.source);
         Ok(res)
     }
