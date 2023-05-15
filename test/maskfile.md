@@ -4,8 +4,6 @@ The following maskfile contains scripts full of linting errors to test masklint 
 
 ## bash
 
-> runs cargo clippy
-
 ```bash
 mkdir $unset
 ```
