@@ -1,0 +1,90 @@
+snapshot:
+  name_template: "{{ incpatch .Version }}_next"
+builds:
+  - gobinary: "true" # forcing noop builds with coreutils true command
+    no_main_check: true
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    hooks:
+      post:
+        # trimsuffix is required to strip the suffix that the rust bins don't contain
+        # https://goreleaser.com/customization/builds/#why-is-there-a-_v1-suffix-on-amd64-builds
+        - cmd: 'fd -1 {{trimsuffix .Target "_v1"}} out/bin/ -x bash -c "mkdir -p {{ dir .Path }} && cp {} {{.Path}}"'
+universal_binaries:
+  - replace: false
+
+source:
+  enabled: true
+  rlcp: true
+  name_template: "{{ .ProjectName }}-source"
+sboms:
+  - artifacts: source
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    rlcp: true
+nfpms:
+  - maintainer: Tobias Brumhard <code@brumhard.com>
+    description: &desc Lint your mask targets.
+    homepage: &homepage https://github.com/brumhard/{{ .ProjectName }}
+    file_name_template: "{{ .PackageName }}_{{ .Os }}_{{ .Arch }}"
+    license: &license "MIT"
+    formats:
+      - deb
+      - rpm
+      - apk
+brews:
+  - description: *desc
+    homepage: *homepage
+    license: *license
+    tap:
+      owner: brumhard
+      name: tap
+      # https://goreleaser.com/errors/resource-not-accessible-by-integration/#2-use-a-personal-access-token-pat-specifically-for-the-integration
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    install: |
+      bin.install "masklint"
+signs:
+  # keyless signing with cosign and github actions token
+  # https://github.com/sigstore/cosign/blob/cc969943428c109904d6a1888eb44c1576769cbd/.goreleaser.yml#L165
+  - cmd: cosign
+    signature: "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
+    args:
+      - sign-blob
+      - --output-signature=${artifact}-keyless.sig
+      - --output-certificate=${artifact}-keyless.pem
+      - ${artifact}
+      - --yes
+    artifacts: all
+
+release:
+  mode: replace
+  footer: |
+    {{- if .PreviousTag }}**Full Changelog**: https://github.com/brumhard/{{ .ProjectName }}/compare/{{ .PreviousTag }}...{{ .Tag }}{{ end }}
+changelog:
+  sort: asc
+  use: github
+  groups:
+    - title: New Features and updates
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: Bug fixes
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 10
+    - title: Documentation updates
+      regexp: "^.*docs[(\\w)]*:+.*$"
+      order: 20
+    - title: Other Work
+      order: 999
+  filters:
+    exclude:
+      - "^refactor"
+      - "^chore"
