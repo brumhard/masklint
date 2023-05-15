@@ -1,6 +1,6 @@
 # masklint 🥸
 
-Lint your mask targets.
+Lint your [mask](https://github.com/jacobdeichert/mask) targets.
 
 <details>
 <summary><h2>Installation</h3></summary>
