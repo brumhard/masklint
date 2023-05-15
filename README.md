@@ -2,6 +2,49 @@
 
 Lint your mask targets.
 
+<details>
+<summary><h2>Installation</h3></summary>
+
+### From source
+
+If you have `cargo` installed you can just run the following.
+Make sure that you have added Cargo's bin directory (e.g. `~/.cargo/bin`) to your `PATH`.
+
+```shell
+cargo install --git https://github.com/brumhard/maskfile.git --tag latest
+```
+
+### Released binaries/packages
+
+Download the desired version for your operating system and processor architecture from the [releases](https://github.com/brumhard/maskfile/releases).
+Make the file executable and place it in a directory available in your `$PATH`.
+
+### Use with nix
+
+```shell
+nix run github:brumhard/maskfile/latest
+```
+
+or
+
+```nix
+{
+    inputs.maskfile.url = "github:brumhard/maskfile/latest";
+
+    outputs = { maskfile, ... }: {
+        packages.x86_64-linux = [maskfile.packages.x86_64-linux.rl];
+    };
+}
+```
+
+### Homebrew
+
+```shell
+brew install brumhard/tap/maskfile
+```
+
+</details>
+
 ## Features
 
 ```shell
