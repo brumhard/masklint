@@ -6,6 +6,7 @@
 
 ```bash
 cargo clippy -- -W clippy::pedantic
+cargo run -- run
 ```
 
 ## audit

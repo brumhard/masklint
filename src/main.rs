@@ -55,17 +55,11 @@ fn main() -> Result<()> {
             Some(s) => s,
         };
 
-        // let section_header = format!("'{}'", );
-        println!("{}", command.name.bold().cyan().underline());
-
         let linter: Box<dyn Linter> = match script.executor.as_str() {
             "sh" | "bash" | "zsh" => Box::new(Shellcheck {}),
             "py" | "python" => Box::new(Pylint {}),
             "rb" | "ruby" => Box::new(Rubocop {}),
-            lang => {
-                println!("no linter for language {lang} found");
-                continue;
-            }
+            _ => Box::new(Catchall {}),
         };
 
         let mut file_name = command.name.clone();
@@ -80,6 +74,11 @@ fn main() -> Result<()> {
         }
 
         let findings = linter.execute(&file_path)?;
+        if findings.is_empty() {
+            continue;
+        }
+
+        println!("{}", command.name.bold().cyan().underline());
         println!("{findings}\n");
     }
     Ok(())
@@ -93,6 +92,13 @@ trait Linter {
         Ok(script.source.clone())
     }
     fn execute(&self, path: &Path) -> Result<String>;
+}
+
+struct Catchall;
+impl Linter for Catchall {
+    fn execute(&self, _: &Path) -> Result<String> {
+        Ok(format!("no linter found for target"))
+    }
 }
 
 struct Shellcheck;
