@@ -11,28 +11,28 @@ If you have `cargo` installed you can just run the following.
 Make sure that you have added Cargo's bin directory (e.g. `~/.cargo/bin`) to your `PATH`.
 
 ```shell
-cargo install --git https://github.com/brumhard/maskfile.git --tag latest
+cargo install --git https://github.com/brumhard/masklint.git --tag latest
 ```
 
 ### Released binaries/packages
 
-Download the desired version for your operating system and processor architecture from the [releases](https://github.com/brumhard/maskfile/releases).
+Download the desired version for your operating system and processor architecture from the [releases](https://github.com/brumhard/masklint/releases).
 Make the file executable and place it in a directory available in your `$PATH`.
 
 ### Use with nix
 
 ```shell
-nix run github:brumhard/maskfile/latest
+nix run github:brumhard/masklint/latest
 ```
 
 or
 
 ```nix
 {
-    inputs.maskfile.url = "github:brumhard/maskfile/latest";
+    inputs.masklint.url = "github:brumhard/masklint/latest";
 
-    outputs = { maskfile, ... }: {
-        packages.x86_64-linux = [maskfile.packages.x86_64-linux.rl];
+    outputs = { masklint, ... }: {
+        packages.x86_64-linux = [masklint.packages.x86_64-linux.rl];
     };
 }
 ```
@@ -40,7 +40,7 @@ or
 ### Homebrew
 
 ```shell
-brew install brumhard/tap/maskfile
+brew install brumhard/tap/masklint
 ```
 
 </details>
