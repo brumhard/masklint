@@ -3,7 +3,6 @@ use clap::{command, Parser, Subcommand};
 use mask_parser::maskfile::Script;
 use owo_colors::OwoColorize;
 use std::{
-    fmt::format,
     fs::{self, File},
     io::Write,
     path::Path,
@@ -97,7 +96,7 @@ trait Linter {
 struct Catchall;
 impl Linter for Catchall {
     fn execute(&self, _: &Path) -> Result<String> {
-        Ok(format!("no linter found for target"))
+        Ok("no linter found for target".to_string())
     }
 }
 
@@ -120,7 +119,7 @@ impl Linter for Shellcheck {
     }
 }
 
-const PYLINT_IGNORES: &'static [&str] = &[
+const PYLINT_IGNORES: &[&str] = &[
     "C0114", //https://pylint.readthedocs.io/en/latest/user_guide/messages/convention/missing-module-docstring.html
 ];
 struct Pylint;
@@ -139,11 +138,11 @@ impl Linter for Pylint {
                 continue;
             }
             // if the line contains any of the ignores skip
-            if PYLINT_IGNORES.iter().find(|&ignore| line.contains(ignore)).is_some() {
+            if PYLINT_IGNORES.iter().any(|&ignore| line.contains(ignore)) {
                 continue;
             }
 
-            valid_lines.push(line.replace(&format!("{}:", path.to_string_lossy()), "line "))
+            valid_lines.push(line.replace(&format!("{}:", path.to_string_lossy()), "line "));
         }
         Ok(valid_lines.join("\n").trim().to_string())
     }

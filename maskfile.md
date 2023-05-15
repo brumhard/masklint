@@ -15,13 +15,13 @@ cargo run -- run
 
 ```bash
 info=$(cargo outdated --root-deps-only --format json)
-if [ $(echo "$info" |  jq '.dependencies | length') -gt 0 ]; then
+if [ "$(echo "$info" |  jq '.dependencies | length')" -gt 0 ]; then
     echo "dependencies are not up to date:"
     echo "$info" | jq
     exit 1
 fi
 vulns=$(cargo audit --json)
-if [ $(echo "$vulns" |  jq '.vulnerabilities.count') -gt 0 ]; then
+if [ "$(echo "$vulns" |  jq '.vulnerabilities.count')" -gt 0 ]; then
     echo "vulnerabilities found:"
     echo "$vulns" | jq
     exit 1
@@ -35,5 +35,5 @@ if  [ "$command" = "dump" ]; then
     rm -rf "test-out"
     command="dump -o test-out"
 fi
-cargo run -- $command --maskfile test/maskfile.md
+cargo run -- "$command" --maskfile test/maskfile.md
 ```
