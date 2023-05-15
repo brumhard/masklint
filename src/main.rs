@@ -1,7 +1,9 @@
 use anyhow::Result;
 use clap::{command, Parser, Subcommand};
 use mask_parser::maskfile::Script;
+use owo_colors::OwoColorize;
 use std::{
+    fmt::format,
     fs::{self, File},
     io::Write,
     path::Path,
@@ -72,9 +74,10 @@ fn main() -> Result<()> {
         if matches!(cli.command, Commands::Dump { .. }) {
             continue;
         }
-        println!("checking {}", &command.name);
+        let section_header = format!("CHECKING TARGET: '{}'", command.name.bold());
+        println!("{}", section_header.cyan().underline());
         let findings = linter.execute(&file_path)?;
-        println!("{findings}");
+        println!("{findings}\n");
     }
     Ok(())
 }
@@ -97,6 +100,7 @@ impl Linter for Shellcheck {
     fn execute(&self, path: &Path) -> Result<String> {
         let output = Command::new("shellcheck").arg("--color=always").arg(path).output()?;
         let findings = String::from_utf8_lossy(&output.stdout)
+            .trim()
             .replace(&format!("{} ", path.to_string_lossy()), "");
         Ok(findings)
     }
@@ -118,7 +122,7 @@ impl Linter for Pylint {
     fn execute(&self, path: &Path) -> Result<String> {
         let output = Command::new("pylint").arg(path).output()?;
         let mut valid_lines: Vec<String> = vec![];
-        for line in String::from_utf8_lossy(&output.stdout).lines() {
+        for line in String::from_utf8_lossy(&output.stdout).trim().lines() {
             if line.starts_with("-------") {
                 break;
             }

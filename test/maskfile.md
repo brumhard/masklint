@@ -7,9 +7,7 @@ The following maskfile contains scripts full of linting errors to test masklint 
 > runs cargo clippy
 
 ```bash
-unused="unused"
-test=$(echo "test")
-mkdir $test
+mkdir $unset
 ```
 
 ## python
