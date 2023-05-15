@@ -55,11 +55,15 @@ fn main() -> Result<()> {
             Some(s) => s,
         };
 
+        // let section_header = format!("'{}'", );
+        println!("{}", command.name.bold().cyan().underline());
+
         let linter: Box<dyn Linter> = match script.executor.as_str() {
             "sh" | "bash" | "zsh" => Box::new(Shellcheck {}),
             "py" | "python" => Box::new(Pylint {}),
-            _ => {
-                println!("no linter found");
+            "rb" | "ruby" => Box::new(Rubocop {}),
+            lang => {
+                println!("no linter for language {lang} found");
                 continue;
             }
         };
@@ -74,8 +78,7 @@ fn main() -> Result<()> {
         if matches!(cli.command, Commands::Dump { .. }) {
             continue;
         }
-        let section_header = format!("CHECKING TARGET: '{}'", command.name.bold());
-        println!("{}", section_header.cyan().underline());
+
         let findings = linter.execute(&file_path)?;
         println!("{findings}\n");
     }
@@ -98,7 +101,7 @@ impl Linter for Shellcheck {
         ".sh"
     }
     fn execute(&self, path: &Path) -> Result<String> {
-        let output = Command::new("shellcheck").arg("--color=always").arg(path).output()?;
+        let output = Command::new("shellcheck").arg(path).output()?;
         let findings = String::from_utf8_lossy(&output.stdout)
             .trim()
             .replace(&format!("{} ", path.to_string_lossy()), "");
@@ -136,6 +139,28 @@ impl Linter for Pylint {
 
             valid_lines.push(line.replace(&format!("{}:", path.to_string_lossy()), "line "))
         }
-        Ok(valid_lines.join("\n"))
+        Ok(valid_lines.join("\n").trim().to_string())
+    }
+}
+
+struct Rubocop;
+impl Linter for Rubocop {
+    fn file_extension(&self) -> &'static str {
+        ".rb"
+    }
+    fn execute(&self, path: &Path) -> Result<String> {
+        let output = Command::new("rubocop")
+            .arg("--format=clang")
+            .arg("--display-style-guide")
+            .arg(path)
+            .output()?;
+        let findings = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter(|l| !l.contains("1 file inspected"))
+            .collect::<Vec<&str>>()
+            .join("\n")
+            .trim()
+            .replace(&format!("{}:", path.to_string_lossy()), "line ");
+        Ok(findings)
     }
 }

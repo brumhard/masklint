@@ -17,3 +17,10 @@ import os
 name = os.getenv("name", "WORLD");
 print("Hello, " + name + "!")
 ```
+
+## ruby
+
+```ruby
+name = ENV["name"] || "WORLD"
+puts "Hello, #{name}!"
+```
