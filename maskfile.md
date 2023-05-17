@@ -16,7 +16,8 @@ if  [ "$command" = "dump" ]; then
     rm -rf "test-out"
     command="dump -o test-out"
 fi
-cargo run -- "$command" --maskfile test/maskfile.md
+# shellcheck disable=SC2086 # needs to be this way to support args in command
+cargo run -- $command --maskfile test/maskfile.md
 ```
 
 ## init

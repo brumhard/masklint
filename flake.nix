@@ -6,9 +6,16 @@
     fenix.url = "github:nix-community/fenix";
   };
 
-  outputs = { self, nixpkgs, utils, naersk, fenix }: utils.lib.eachDefaultSystem
-    (system:
-      let
+  outputs = {
+    self,
+    nixpkgs,
+    utils,
+    naersk,
+    fenix,
+  }:
+    utils.lib.eachDefaultSystem
+    (
+      system: let
         name = "masklint";
         version = "latest";
         # https://discourse.nixos.org/t/using-nixpkgs-legacypackages-system-vs-import/17462/7
@@ -22,61 +29,59 @@
           rustc = toolchain;
         };
       in
-      with pkgs;
-      rec {
-        packages = {
-          default = packages.${name};
-          "${name}" = naersk'.buildPackage {
-            inherit name version;
-            src = ./.;
+        with pkgs; rec {
+          packages = {
+            default = packages.${name};
+            "${name}" = naersk'.buildPackage {
+              inherit name version;
+              src = ./.;
+            };
           };
-        };
 
-        apps = {
-          default = apps.${name};
-          "${name}" = utils.lib.mkApp {
-            drv = packages.default;
-            exePath = "/bin/${name}";
+          apps = {
+            default = apps.${name};
+            "${name}" = utils.lib.mkApp {
+              drv = packages.default;
+              exePath = "/bin/${name}";
+            };
           };
-        };
 
-        devShell = mkShellNoCC {
-          packages = [
-            # rust
-            rustup
-            cargo-audit
-            cargo-outdated
-            cargo-cross
-            cargo-edit
+          devShell = mkShellNoCC {
+            packages = [
+              # rust
+              rustup
+              cargo-audit
+              cargo-outdated
+              cargo-cross
+              cargo-edit
 
-            mask
-            yq-go
-            ripgrep
-            fd
-            goreleaser
-            svu
-            commitlint
-            syft
-            cosign
+              mask
+              yq-go
+              ripgrep
+              fd
+              goreleaser
+              svu
+              commitlint
+              syft
+              cosign
 
-            # shells
-            shellcheck
+              # shells
+              shellcheck
 
-            # python
-            python311
-            python311Packages.pylint
+              # python
+              python311
+              ruff
 
-            # ruby
-            ruby_3_2
-            rubyPackages_3_2.rubocop
-          ];
+              # ruby
+              ruby_3_2
+              rubyPackages_3_2.rubocop
+            ];
 
-
-          # https://github.com/openebs/mayastor-control-plane/blob/develop/shell.nix
-          NODE_PATH = "${nodePackages."@commitlint/config-conventional"}/lib/node_modules";
-          # see https://github.com/cross-rs/cross/issues/1241
-          CROSS_CONTAINER_OPTS = "--platform linux/amd64";
-        };
-      }
+            # https://github.com/openebs/mayastor-control-plane/blob/develop/shell.nix
+            NODE_PATH = "${nodePackages."@commitlint/config-conventional"}/lib/node_modules";
+            # see https://github.com/cross-rs/cross/issues/1241
+            CROSS_CONTAINER_OPTS = "--platform linux/amd64";
+          };
+        }
     );
 }
