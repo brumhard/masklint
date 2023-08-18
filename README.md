@@ -32,7 +32,7 @@ or
     inputs.masklint.url = "github:brumhard/masklint/latest";
 
     outputs = { masklint, ... }: {
-        packages.x86_64-linux = [masklint.packages.x86_64-linux.rl];
+        devShells.x86_64-linux.default = [masklint.packages.x86_64-linux.masklint];
     };
 }
 ```
