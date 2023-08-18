@@ -24,7 +24,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         toolchain = fenix.packages.${system}.fromToolchainFile {
           file = ./rust-toolchain.toml;
-          sha256 = "sha256-eMJethw5ZLrJHmoN2/l0bIyQjoTX1NsvalWSscTixpI=";
+          sha256 = "sha256-R0F0Risbr74xg9mEYydyebx/z0Wu6HI0/KWwrV30vZo=";
         };
         naersk' = naersk.lib.${system}.override {
           cargo = toolchain;
