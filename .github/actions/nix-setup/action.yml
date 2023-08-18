@@ -16,7 +16,7 @@ runs:
     # there seems to be no way to cache nix stuff really
     # setting the store as suggested in the issue doesn't work
     - name: Install Nix
-      uses: cachix/install-nix-action@v20
+      uses: cachix/install-nix-action@v22
       with:
         # token to avoid GitHub rate limiting
         extra_nix_config: |
