@@ -1,11 +1,12 @@
-use anyhow::Result;
+use anyhow::anyhow;
 use clap::{command, Parser, Subcommand};
 use mask_parser::maskfile::Script;
 use owo_colors::OwoColorize;
 use std::{
+    fmt::{Debug, Display},
     fs::{self, File},
-    io::Write,
-    path::Path,
+    io::{self, Write},
+    path::{Path, PathBuf},
     process::Command,
 };
 
@@ -32,47 +33,52 @@ enum Commands {
     },
 }
 
-fn main() -> Result<()> {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let content = fs::read_to_string(cli.maskfile)?;
     let maskfile = mask_parser::parse(content);
 
-    // keeping it here to not let it go out of scope
-    // TODO: refactor to only create tempdir if needed
-    let tmp_dir = tempfile::tempdir()?;
-    let mut out_dir = tmp_dir.path().to_path_buf();
-    if let Commands::Dump { output } = &cli.command {
-        drop(tmp_dir);
-        out_dir = output.parse()?;
-        fs::create_dir_all(&out_dir)?;
-    }
+    // keeping the _tmp dir here to not let it go out of scope
+    let (out_dir, _tmp) = match &cli.command {
+        Commands::Dump { output } => {
+            let dir: PathBuf = output.parse()?;
+            fs::create_dir_all(&dir)?;
+            (dir, None)
+        }
+        _ => {
+            let tmp_dir = tempfile::tempdir()?;
+            (tmp_dir.path().to_path_buf(), Some(tmp_dir))
+        }
+    };
 
     for command in maskfile.commands {
-        let script = match command.script {
-            None => continue,
-            Some(s) => s,
-        };
+        let Some(script)  = command.script else { continue };
 
-        let linter: Box<dyn Linter> = match script.executor.as_str() {
-            "sh" | "bash" | "zsh" => Box::new(Shellcheck {}),
-            "py" | "python" => Box::new(Ruff {}),
-            "rb" | "ruby" => Box::new(Rubocop {}),
-            _ => Box::new(Catchall {}),
+        let language_handler: &dyn LanguageHandler = match script.executor.as_str() {
+            "sh" | "bash" | "zsh" => &Shellcheck {},
+            "py" | "python" => &Ruff {},
+            "rb" | "ruby" => &Rubocop {},
+            _ => &Catchall {},
         };
 
         let mut file_name = command.name.clone();
-        file_name.push_str(linter.file_extension());
+        file_name.push_str(language_handler.file_extension());
         let file_path = out_dir.join(&file_name);
         let mut script_file = File::options().create_new(true).append(true).open(&file_path)?;
-        let content = linter.content(&script)?;
+        let content = language_handler.content(&script)?;
         script_file.write_all(content.as_bytes())?;
 
         if matches!(cli.command, Commands::Dump { .. }) {
             continue;
         }
 
-        let findings = linter.execute(&file_path)?;
+        let findings = language_handler.execute(&file_path).map_err(|e| match e.kind() {
+            io::ErrorKind::NotFound => {
+                anyhow!("executable for {language_handler} not found in $PATH")
+            }
+            _ => anyhow!(e),
+        })?;
         if findings.is_empty() {
             continue;
         }
@@ -83,36 +89,49 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-trait Linter {
+trait LanguageHandler: Display {
     fn file_extension(&self) -> &'static str {
         ""
     }
-    fn content(&self, script: &Script) -> Result<String> {
+    fn content(&self, script: &Script) -> Result<String, io::Error> {
         Ok(script.source.clone())
     }
-    fn execute(&self, path: &Path) -> Result<String>;
+    fn execute(&self, path: &Path) -> Result<String, io::Error>;
 }
 
+#[derive(Debug)]
 struct Catchall;
-impl Linter for Catchall {
-    fn execute(&self, _: &Path) -> Result<String> {
+impl Display for Catchall {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "catchall")
+    }
+}
+impl LanguageHandler for Catchall {
+    fn execute(&self, _: &Path) -> Result<String, io::Error> {
         Ok("no linter found for target".to_string())
     }
 }
 
+#[derive(Debug)]
 struct Shellcheck;
-impl Linter for Shellcheck {
+impl Display for Shellcheck {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "shellcheck")
+    }
+}
+
+impl LanguageHandler for Shellcheck {
     fn file_extension(&self) -> &'static str {
         ".sh"
     }
-    fn execute(&self, path: &Path) -> Result<String> {
+    fn execute(&self, path: &Path) -> Result<String, io::Error> {
         let output = Command::new("shellcheck").arg(path).output()?;
         let findings = String::from_utf8_lossy(&output.stdout)
             .trim()
             .replace(&format!("{} ", path.to_string_lossy()), "");
         Ok(findings)
     }
-    fn content(&self, script: &Script) -> Result<String> {
+    fn content(&self, script: &Script) -> Result<String, io::Error> {
         let mut res = format!("#!/bin/usr/env {}\n", script.executor);
         res.push_str(&script.source);
         Ok(res)
@@ -120,11 +139,17 @@ impl Linter for Shellcheck {
 }
 
 struct Ruff;
-impl Linter for Ruff {
+impl Display for Ruff {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ruff")
+    }
+}
+
+impl LanguageHandler for Ruff {
     fn file_extension(&self) -> &'static str {
         ".py"
     }
-    fn execute(&self, path: &Path) -> Result<String> {
+    fn execute(&self, path: &Path) -> Result<String, io::Error> {
         let output = Command::new("ruff")
             .arg("--show-source")
             .arg("--format=text")
@@ -145,11 +170,17 @@ impl Linter for Ruff {
 }
 
 struct Rubocop;
-impl Linter for Rubocop {
+impl Display for Rubocop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "rubocop")
+    }
+}
+
+impl LanguageHandler for Rubocop {
     fn file_extension(&self) -> &'static str {
         ".rb"
     }
-    fn execute(&self, path: &Path) -> Result<String> {
+    fn execute(&self, path: &Path) -> Result<String, io::Error> {
         let output = Command::new("rubocop")
             .arg("--format=clang")
             .arg("--display-style-guide")
