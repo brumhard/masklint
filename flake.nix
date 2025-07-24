@@ -63,7 +63,7 @@
               fd
               goreleaser
               svu
-              commitlint
+              commitlint-rs
               syft
               cosign
 
@@ -79,8 +79,6 @@
               rubyPackages_3_2.rubocop
             ];
 
-            # https://github.com/openebs/mayastor-control-plane/blob/develop/shell.nix
-            NODE_PATH = "${nodePackages."@commitlint/config-conventional"}/lib/node_modules";
             # see https://github.com/cross-rs/cross/issues/1241
             CROSS_CONTAINER_OPTS = "--platform linux/amd64";
           };
