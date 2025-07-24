@@ -56,6 +56,7 @@
               cargo-outdated
               cargo-cross
               cargo-edit
+              gcc
 
               mask
               yq-go
