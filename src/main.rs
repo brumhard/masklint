@@ -51,11 +51,18 @@ fn main() -> anyhow::Result<()> {
             (tmp_dir.path().to_path_buf(), Some(tmp_dir))
         }
     };
-
     let context =
         &ProcessCommandContext { out_dir, is_dump: matches!(cli.command, Commands::Dump { .. }) };
+
+    let mut total_findings = 0;
     for command in maskfile.commands {
-        process_command(context, command, None)?;
+        total_findings += process_command(context, command, None)?;
+    }
+
+    if total_findings > 0 {
+        let plural = if total_findings == 1 { "" } else { "s" };
+        let error_msg = format!("{} file{} with lint failures.", total_findings, plural);
+        return Err(anyhow::anyhow!(error_msg.bold().red().to_string()));
     }
     Ok(())
 }
@@ -70,12 +77,14 @@ fn process_command(
     context: &ProcessCommandContext,
     command: mask_parser::maskfile::Command,
     parent_name: Option<&str>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<u32> {
     // Build full command name including parent
     let full_command_name = match parent_name {
         Some(parent) => format!("{} {}", parent, command.name),
         None => command.name,
     };
+
+    let mut findings_count = 0;
 
     if let Some(script) = command.script {
         let language_handler: &dyn LanguageHandler = match script.executor.as_str() {
@@ -93,15 +102,19 @@ fn process_command(
         script_file.write_all(content.as_bytes())?;
 
         if !context.is_dump {
-            let findings = language_handler.execute(&file_path).map_err(|e| match e.kind() {
+            let lint_result = language_handler.execute(&file_path).map_err(|e| match e.kind() {
                 io::ErrorKind::NotFound => {
                     anyhow!("executable for {language_handler} not found in $PATH")
                 }
                 _ => anyhow!(e),
             })?;
-            if !findings.is_empty() {
+            if !lint_result.message.is_empty() {
                 println!("{}", full_command_name.bold().cyan().underline());
-                println!("{findings}\n");
+                println!("{}", lint_result.message);
+                match lint_result.result_type {
+                    LintResultType::Findings => findings_count += 1,
+                    LintResultType::Warning => {}
+                }
             }
         }
     }
@@ -109,10 +122,32 @@ fn process_command(
     // Process subcommands recursively
     if !command.subcommands.is_empty() {
         for subcmd in command.subcommands {
-            process_command(context, subcmd, Some(&full_command_name))?;
+            findings_count += process_command(context, subcmd, Some(&full_command_name))?;
         }
     }
-    Ok(())
+    Ok(findings_count)
+}
+
+#[derive(Debug)]
+pub enum LintResultType {
+    Warning,
+    Findings,
+}
+
+#[derive(Debug)]
+pub struct LintResult {
+    pub message: String,
+    pub result_type: LintResultType,
+}
+
+impl LintResult {
+    pub fn warning(message: String) -> Self {
+        LintResult { message, result_type: LintResultType::Warning }
+    }
+
+    pub fn findings(message: String) -> Self {
+        LintResult { message, result_type: LintResultType::Findings }
+    }
 }
 
 trait LanguageHandler: Display {
@@ -122,7 +157,7 @@ trait LanguageHandler: Display {
     fn content(&self, script: &Script) -> Result<String, io::Error> {
         Ok(script.source.clone())
     }
-    fn execute(&self, path: &Path) -> Result<String, io::Error>;
+    fn execute(&self, path: &Path) -> Result<LintResult, io::Error>;
 }
 
 #[derive(Debug)]
@@ -133,8 +168,8 @@ impl Display for Catchall {
     }
 }
 impl LanguageHandler for Catchall {
-    fn execute(&self, _: &Path) -> Result<String, io::Error> {
-        Ok("no linter found for target".to_string())
+    fn execute(&self, _: &Path) -> Result<LintResult, io::Error> {
+        Ok(LintResult::warning("no linter found for target".to_string()))
     }
 }
 
@@ -150,12 +185,12 @@ impl LanguageHandler for Shellcheck {
     fn file_extension(&self) -> &'static str {
         ".sh"
     }
-    fn execute(&self, path: &Path) -> Result<String, io::Error> {
+    fn execute(&self, path: &Path) -> Result<LintResult, io::Error> {
         let output = Command::new("shellcheck").arg(path).output()?;
         let findings = String::from_utf8_lossy(&output.stdout)
             .trim()
             .replace(&format!("{} ", path.to_string_lossy()), "");
-        Ok(findings)
+        Ok(LintResult::findings(findings))
     }
     fn content(&self, script: &Script) -> Result<String, io::Error> {
         let mut res = format!("#!/bin/usr/env {}\n", script.executor);
@@ -175,7 +210,7 @@ impl LanguageHandler for Ruff {
     fn file_extension(&self) -> &'static str {
         ".py"
     }
-    fn execute(&self, path: &Path) -> Result<String, io::Error> {
+    fn execute(&self, path: &Path) -> Result<LintResult, io::Error> {
         let output = Command::new("ruff")
             .arg("check")
             .arg("--output-format=full") // show context in source
@@ -192,7 +227,7 @@ impl LanguageHandler for Ruff {
 
             valid_lines.push(line.replace(&format!("{}:", path.to_string_lossy()), "line "));
         }
-        Ok(valid_lines.join("\n").trim().to_string())
+        Ok(LintResult::findings(valid_lines.join("\n").trim().to_string()))
     }
 }
 
@@ -207,7 +242,7 @@ impl LanguageHandler for Rubocop {
     fn file_extension(&self) -> &'static str {
         ".rb"
     }
-    fn execute(&self, path: &Path) -> Result<String, io::Error> {
+    fn execute(&self, path: &Path) -> Result<LintResult, io::Error> {
         let output = Command::new("rubocop")
             .arg("--format=clang")
             .arg("--display-style-guide")
@@ -220,6 +255,6 @@ impl LanguageHandler for Rubocop {
             .join("\n")
             .trim()
             .replace(&format!("{}:", path.to_string_lossy()), "line ");
-        Ok(findings)
+        Ok(LintResult::findings(findings))
     }
 }
