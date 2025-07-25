@@ -79,7 +79,7 @@ fn process_command(
 
     if let Some(script) = command.script {
         let language_handler: &dyn LanguageHandler = match script.executor.as_str() {
-            "sh" | "bash" | "zsh" => &Shellcheck {},
+            "sh" | "bash" => &Shellcheck {},
             "py" | "python" => &Ruff {},
             "rb" | "ruby" => &Rubocop {},
             _ => &Catchall {},
