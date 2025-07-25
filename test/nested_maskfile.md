@@ -11,3 +11,11 @@ The following maskfile demonstrates the ability to parse nested subcommands.
 ```bash
 mkdir $unset
 ```
+
+### grandparent parent command2
+
+```bash
+files="file1.txt file2.txt"
+rm $files
+```
+

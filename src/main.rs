@@ -151,3 +151,28 @@ fn process_command(
     }
     Ok(findings_count)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("maskfile.md", 3)]
+    #[case("nested_maskfile.md", 2)]
+    fn test_process_maskfile_with_test_files(#[case] filename: &str, #[case] expected: u32) {
+        let test_dir = PathBuf::from("test");
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let context = ProcessCommandContext {
+            out_dir: temp_dir.path().to_path_buf(),
+            is_dump: false,
+            no_warnings: false,
+        };
+
+        let maskfile_path = test_dir.join(filename);
+        assert!(maskfile_path.exists(), "Maskfile {} does not exist", filename);
+        let total_findings = process_maskfile(maskfile_path, &context);
+        assert!(total_findings.is_ok(), "process_maskfile should succeed for test/{}.md", filename);
+        assert_eq!(total_findings.unwrap(), expected);
+    }
+}
