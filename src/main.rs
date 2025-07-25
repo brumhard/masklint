@@ -151,9 +151,10 @@ impl LanguageHandler for Ruff {
     }
     fn execute(&self, path: &Path) -> Result<String, io::Error> {
         let output = Command::new("ruff")
-            .arg("--show-source")
-            .arg("--format=text")
+            .arg("check")
+            .arg("--output-format=full") // show context in source
             .arg("--no-cache")
+            .arg("--quiet") // don't print anything on success
             .arg(path)
             .output()?;
         let mut valid_lines: Vec<String> = vec![];
