@@ -17,6 +17,10 @@ struct Cli {
     /// Path to a different maskfile you want to use
     maskfile: String,
 
+    #[arg(global = true, long)]
+    /// Suppress warning messages
+    no_warnings: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -51,8 +55,11 @@ fn main() -> anyhow::Result<()> {
             (tmp_dir.path().to_path_buf(), Some(tmp_dir))
         }
     };
-    let context =
-        &ProcessCommandContext { out_dir, is_dump: matches!(cli.command, Commands::Dump { .. }) };
+    let context = &ProcessCommandContext {
+        out_dir,
+        is_dump: matches!(cli.command, Commands::Dump { .. }),
+        no_warnings: cli.no_warnings,
+    };
 
     let mut total_findings = 0;
     for command in maskfile.commands {
@@ -70,6 +77,7 @@ fn main() -> anyhow::Result<()> {
 struct ProcessCommandContext {
     out_dir: PathBuf,
     is_dump: bool,
+    no_warnings: bool,
 }
 
 // Function to process a command and its subcommands
@@ -109,11 +117,20 @@ fn process_command(
                 _ => anyhow!(e),
             })?;
             if !lint_result.message.is_empty() {
-                println!("{}", full_command_name.bold().cyan().underline());
-                println!("{}", lint_result.message);
+                let print_results = || {
+                    println!("{}", full_command_name.bold().cyan().underline());
+                    println!("{}", lint_result.message);
+                };
                 match lint_result.result_type {
-                    LintResultType::Findings => findings_count += 1,
-                    LintResultType::Warning => {}
+                    LintResultType::Findings => {
+                        findings_count += 1;
+                        print_results();
+                    }
+                    LintResultType::Warning => {
+                        if !context.no_warnings {
+                            print_results();
+                        }
+                    }
                 }
             }
         }
