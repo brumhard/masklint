@@ -15,7 +15,7 @@ use handlers::{Catchall, LanguageHandler, LintResultType, Rubocop, Ruff, Shellch
 struct Cli {
     #[arg(global = true, long, default_value = "maskfile.md")]
     /// Path to a different maskfile you want to use
-    maskfile: String,
+    maskfile: PathBuf,
 
     #[arg(global = true, long)]
     /// Suppress warning messages
@@ -37,11 +37,14 @@ enum Commands {
     },
 }
 
+struct ProcessCommandContext {
+    out_dir: PathBuf,
+    is_dump: bool,
+    no_warnings: bool,
+}
+
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-
-    let content = fs::read_to_string(cli.maskfile)?;
-    let maskfile = mask_parser::parse(content);
 
     // keeping the _tmp dir here to not let it go out of scope
     let (out_dir, _tmp) = match &cli.command {
@@ -61,11 +64,7 @@ fn main() -> anyhow::Result<()> {
         no_warnings: cli.no_warnings,
     };
 
-    let mut total_findings = 0;
-    for command in maskfile.commands {
-        total_findings += process_command(context, command, None)?;
-    }
-
+    let total_findings = process_maskfile(cli.maskfile, context)?;
     if total_findings > 0 {
         let plural = if total_findings == 1 { "" } else { "s" };
         let error_msg = format!("{} file{} with lint failures.", total_findings, plural);
@@ -74,10 +73,18 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-struct ProcessCommandContext {
-    out_dir: PathBuf,
-    is_dump: bool,
-    no_warnings: bool,
+fn process_maskfile(
+    maskfile_path: PathBuf,
+    context: &ProcessCommandContext,
+) -> anyhow::Result<u32> {
+    let content = fs::read_to_string(maskfile_path)?;
+    let maskfile = mask_parser::parse(content);
+
+    let mut total_findings = 0;
+    for command in maskfile.commands {
+        total_findings += process_command(context, command, None)?;
+    }
+    Ok(total_findings)
 }
 
 // Function to process a command and its subcommands
