@@ -52,9 +52,32 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
+    let context =
+        &ProcessCommandContext { out_dir, is_dump: matches!(cli.command, Commands::Dump { .. }) };
     for command in maskfile.commands {
-        let Some(script)  = command.script else { continue };
+        process_command(context, command, None)?;
+    }
+    Ok(())
+}
 
+struct ProcessCommandContext {
+    out_dir: PathBuf,
+    is_dump: bool,
+}
+
+// Function to process a command and its subcommands
+fn process_command(
+    context: &ProcessCommandContext,
+    command: mask_parser::maskfile::Command,
+    parent_name: Option<&str>,
+) -> anyhow::Result<()> {
+    // Build full command name including parent
+    let full_command_name = match parent_name {
+        Some(parent) => format!("{} {}", parent, command.name),
+        None => command.name,
+    };
+
+    if let Some(script) = command.script {
         let language_handler: &dyn LanguageHandler = match script.executor.as_str() {
             "sh" | "bash" | "zsh" => &Shellcheck {},
             "py" | "python" => &Ruff {},
@@ -62,29 +85,32 @@ fn main() -> anyhow::Result<()> {
             _ => &Catchall {},
         };
 
-        let mut file_name = command.name.clone();
+        let mut file_name = full_command_name.replace(" ", "_");
         file_name.push_str(language_handler.file_extension());
-        let file_path = out_dir.join(&file_name);
+        let file_path = context.out_dir.join(&file_name);
         let mut script_file = File::options().create_new(true).append(true).open(&file_path)?;
         let content = language_handler.content(&script)?;
         script_file.write_all(content.as_bytes())?;
 
-        if matches!(cli.command, Commands::Dump { .. }) {
-            continue;
-        }
-
-        let findings = language_handler.execute(&file_path).map_err(|e| match e.kind() {
-            io::ErrorKind::NotFound => {
-                anyhow!("executable for {language_handler} not found in $PATH")
+        if !context.is_dump {
+            let findings = language_handler.execute(&file_path).map_err(|e| match e.kind() {
+                io::ErrorKind::NotFound => {
+                    anyhow!("executable for {language_handler} not found in $PATH")
+                }
+                _ => anyhow!(e),
+            })?;
+            if !findings.is_empty() {
+                println!("{}", full_command_name.bold().cyan().underline());
+                println!("{findings}\n");
             }
-            _ => anyhow!(e),
-        })?;
-        if findings.is_empty() {
-            continue;
         }
+    }
 
-        println!("{}", command.name.bold().cyan().underline());
-        println!("{findings}\n");
+    // Process subcommands recursively
+    if !command.subcommands.is_empty() {
+        for subcmd in command.subcommands {
+            process_command(context, subcmd, Some(&full_command_name))?;
+        }
     }
     Ok(())
 }
