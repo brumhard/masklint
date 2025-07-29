@@ -161,7 +161,8 @@ mod tests {
     #[case("maskfile.md", 3)]
     #[case("nested_maskfile.md", 2)]
     fn test_process_maskfile_with_test_files(#[case] filename: &str, #[case] expected: u32) {
-        let test_dir = PathBuf::from("test");
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let test_dir = manifest_dir.join("test");
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let context = ProcessCommandContext {
             out_dir: temp_dir.path().to_path_buf(),
