@@ -55,7 +55,7 @@ masklint dump -o ./test # dumps all targets as seperate files to ./test
 
 Supported languages and used linters:
 
-- `bash`, `sh`, `zsh` using [shellcheck](https://github.com/koalaman/shellcheck)
+- `bash`, `sh` using [shellcheck](https://github.com/koalaman/shellcheck)
 - `python` using [ruff](https://github.com/charliermarsh/ruff)
 - `ruby` using [rubocop](https://github.com/rubocop/rubocop)
 
