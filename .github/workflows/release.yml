@@ -15,12 +15,12 @@ jobs:
     name: ${{ matrix.filter }}
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/nix-setup
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       # https://github.com/actions/cache/blob/main/examples.md#rust---cargo
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-cargo-
       - name: Build ${{ matrix.filter }} targets
         run: mask build --filter ${{ matrix.filter }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.filter }}
           path: out/bin/*
@@ -45,14 +45,14 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
         with:
           # required for goreleaser
           fetch-depth: 0
       - uses: ./.github/actions/nix-setup
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v5
         with:
           path: out/bin/
       - name: Release
