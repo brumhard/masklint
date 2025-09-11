@@ -34,6 +34,8 @@ jobs:
             ${{ runner.os }}-cargo-
       - name: Build ${{ matrix.filter }} targets
         run: mask build --filter ${{ matrix.filter }}
+        env:
+          CROSS_NO_WARNINGS: "0"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.filter }}
