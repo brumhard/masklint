@@ -141,8 +141,8 @@ git push --no-verify --tags --force
   * desc: toggle to build before releasing
 
 ```bash
-if [ "$build" ]; then
+if [ $build ]; then
     $MASK build
 fi
-goreleaser release --snapshot --skip-validate --clean --skip-sign
+goreleaser release --snapshot --clean
 ```

@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "crossSrc": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1756758745,
+        "narHash": "sha256-Y+CCrb0sLulqr3sCmMyw+B5MtVkDajux+f/49r8Fq4Y=",
+        "owner": "cross-rs",
+        "repo": "cross",
+        "rev": "baf457efc2555225af47963475bd70e8d2f5993f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cross-rs",
+        "ref": "main",
+        "repo": "cross",
+        "type": "github"
+      }
+    },
     "fenix": {
       "inputs": {
         "nixpkgs": [
@@ -81,6 +98,7 @@
     },
     "root": {
       "inputs": {
+        "crossSrc": "crossSrc",
         "fenix": "fenix",
         "naersk": "naersk",
         "nixpkgs": "nixpkgs",

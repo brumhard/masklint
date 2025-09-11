@@ -6,6 +6,8 @@
     naersk.inputs.nixpkgs.follows = "nixpkgs";
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
+    crossSrc.url = "github:cross-rs/cross?ref=main";
+    crossSrc.flake = false;
   };
 
   outputs = {
@@ -14,6 +16,7 @@
     utils,
     naersk,
     fenix,
+    crossSrc,
   }:
     utils.lib.eachDefaultSystem
     (
@@ -48,15 +51,15 @@
             };
           };
 
-          devShell = mkShellNoCC {
+          devShell = mkShell {
             packages = [
               # rust
               rustup
               cargo-audit
               cargo-outdated
-              cargo-cross
+              # NOTE(brumhard): using version from main instead of tagged package
+              (pkgs.callPackage ./nix/cross.nix {inherit pkgs crossSrc;})
               cargo-edit
-              gcc
 
               mask
               yq-go
