@@ -141,8 +141,30 @@ git push --no-verify --tags --force
   * desc: toggle to build before releasing
 
 ```bash
-if [ $build ]; then
+if [ "$build" ]; then
     $MASK build
 fi
 goreleaser release --snapshot --clean
+```
+
+## local-release
+
+> creates a new release locally
+
+**OPTIONS**
+
+* build
+  * flags: --build -b
+  * type: bool
+  * desc: toggle to build before releasing
+
+```bash
+if [ "$build" ]; then
+    $MASK build
+fi
+
+GITHUB_TOKEN=$(gh auth token)
+export GITHUB_TOKEN TAP_GITHUB_TOKEN="$GITHUB_TOKEN" 
+
+goreleaser release --clean
 ```
