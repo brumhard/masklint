@@ -53,7 +53,7 @@ fn main() -> anyhow::Result<()> {
             fs::create_dir_all(&dir)?;
             (dir, None)
         }
-        _ => {
+        Commands::Run {} => {
             let tmp_dir = tempfile::tempdir()?;
             (tmp_dir.path().to_path_buf(), Some(tmp_dir))
         }
@@ -67,7 +67,7 @@ fn main() -> anyhow::Result<()> {
     let total_findings = process_maskfile(cli.maskfile, context)?;
     if total_findings > 0 {
         let plural = if total_findings == 1 { "" } else { "s" };
-        let error_msg = format!("{} file{} with lint failures.", total_findings, plural);
+        let error_msg = format!("{total_findings} file{plural} with lint failures.");
         return Err(anyhow::anyhow!(error_msg.bold().red().to_string()));
     }
     Ok(())
@@ -109,7 +109,7 @@ fn process_command(
             _ => &Catchall {},
         };
 
-        let mut file_name = full_command_name.replace(" ", "_");
+        let mut file_name = full_command_name.replace(' ', "_");
         file_name.push_str(language_handler.file_extension());
         let file_path = context.out_dir.join(&file_name);
         let mut script_file = File::options().create_new(true).append(true).open(&file_path)?;
@@ -171,9 +171,9 @@ mod tests {
         };
 
         let maskfile_path = test_dir.join(filename);
-        assert!(maskfile_path.exists(), "Maskfile {} does not exist", filename);
+        assert!(maskfile_path.exists(), "Maskfile {filename} does not exist");
         let total_findings = process_maskfile(maskfile_path, &context);
-        assert!(total_findings.is_ok(), "process_maskfile should succeed for test/{}.md", filename);
+        assert!(total_findings.is_ok(), "process_maskfile should succeed for test/{filename}.md");
         assert_eq!(total_findings.unwrap(), expected);
     }
 }

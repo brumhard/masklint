@@ -5,7 +5,7 @@
 > runs cargo clippy
 
 ```bash
-cargo clippy -- -W clippy::pedantic
+cargo clippy
 cargo run -- run
 ```
 
